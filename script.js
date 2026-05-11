@@ -1,123 +1,552 @@
-// ======================
-// ALARM JADWAL PELAJARAN
-// ======================
+const hariList = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+let temp = {}, current = null;
 
-let alarmAktif = true;
+init();
 
-// bikin audio alarm
-const alarmSound = new Audio(
-  "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
-);
+function init() {
 
-function cekAlarmJadwal() {
+    let hariDiv = document.getElementById("hari");
 
-    if (!alarmAktif) return;
+    hariList.forEach(h => {
 
-    const sekarang = new Date();
+        let btn = document.createElement("div");
 
-    let jam = sekarang.getHours().toString().padStart(2, "0");
-    let menit = sekarang.getMinutes().toString().padStart(2, "0");
+        btn.innerText = h;
 
-    const waktuSekarang = `${jam}:${menit}`;
+        btn.className = "hari-btn";
 
-    // ambil semua input mapel
-    const semuaInput = document.querySelectorAll(".mapel-input");
+        btn.onclick = () => pilihHari(btn, h);
 
-    semuaInput.forEach(input => {
+        hariDiv.appendChild(btn);
 
-        const cell = input.closest("td");
+    });
 
-        if (!cell) return;
+    load();
 
-        const jamText = cell.querySelector(".jam-text");
+}
 
-        if (!jamText) return;
+function getJadwal() {
 
-        const waktuJadwal = jamText.innerText.trim();
+    return JSON.parse(
+        localStorage.getItem("jadwal")
+    ) || {};
 
-        const mapel = input.value.trim();
+}
 
-        if (
-            waktuJadwal === waktuSekarang &&
-            mapel !== "" &&
-            !cell.dataset.sudahBunyi
-        ) {
+function pilihHari(btn, hari) {
 
-            cell.dataset.sudahBunyi = "true";
+    if (current) {
 
-            tampilkanNotif(mapel, waktuJadwal);
+        let inputs =
+        document.querySelectorAll(".list input");
 
-            alarmSound.play();
+        temp[current] = [];
 
-        }
+        inputs.forEach(i => {
 
-        // reset supaya besok bisa bunyi lagi
-        if (waktuJadwal !== waktuSekarang) {
-            cell.dataset.sudahBunyi = "";
-        }
+            if (i.value)
+                temp[current].push(
+                    formatJam(i.value)
+                );
+
+        });
+
+    }
+
+    document
+    .querySelectorAll(".hari-btn")
+    .forEach(b => b.classList.remove("active"));
+
+    btn.classList.add("active");
+
+    current = hari;
+
+    let jamDiv =
+    document.getElementById("jam");
+
+    jamDiv.innerHTML = "";
+
+    let box =
+    document.createElement("div");
+
+    box.className = "jam-box";
+
+    box.innerHTML = `
+
+        <h4>${hari}</h4>
+
+        <div class="list"></div>
+
+        <button onclick="tambah()">
+            + Jam
+        </button>
+
+        <button onclick="copyHari()">
+            Copy di setiap hari?
+        </button>
+
+        <button
+            onclick="batalHari()"
+            style="background:#888;"
+        >
+            Batal
+        </button>
+
+    `;
+
+    jamDiv.appendChild(box);
+
+    let list =
+    box.querySelector(".list");
+
+    let data = getJadwal();
+
+    let gabung =
+    new Set([
+        ...(data[hari] || []),
+        ...(temp[hari] || [])
+    ]);
+
+    Array.from(gabung).forEach(j => {
+
+        let input =
+        document.createElement("input");
+
+        input.value = j;
+
+        list.appendChild(input);
 
     });
 
 }
 
-// cek tiap 10 detik
-setInterval(cekAlarmJadwal, 10000);
+function tambah() {
 
-// ======================
-// NOTIF CUSTOM
-// ======================
+    let input =
+    document.createElement("input");
 
-function tampilkanNotif(mapel, jam) {
+    input.placeholder =
+    "Contoh: 8 / 800 / 845";
 
-    const notif = document.createElement("div");
+    document
+    .querySelector(".list")
+    .appendChild(input);
 
-    notif.innerHTML = `
-        <div style="
-            position:fixed;
-            top:20px;
-            right:20px;
-            background:#1e1e2f;
-            color:white;
-            padding:20px;
-            border-radius:12px;
-            z-index:9999;
-            box-shadow:0 0 20px rgba(0,0,0,0.5);
-            min-width:250px;
-            animation:slideNotif 0.4s ease;
-        ">
-            <h3 style="margin:0 0 10px;">
-                🔔 Alarm Jadwal
+}
+
+function formatJam(input) {
+
+    input =
+    input.replace(/[^0-9]/g, "");
+
+    if (input.length === 1)
+        return "0" + input + ":00";
+
+    if (input.length === 2)
+        return input + ":00";
+
+    if (input.length === 3)
+        return "0" + input[0] + ":" + input.slice(1);
+
+    if (input.length === 4)
+        return input.slice(0, 2) + ":" + input.slice(2);
+
+    return input;
+
+}
+
+function copyHari() {
+
+    if (!current)
+        return showNotif("⚠️ Pilih hari dulu!");
+
+    let inputs =
+    document.querySelectorAll(".list input");
+
+    let isi = [];
+
+    inputs.forEach(i => {
+
+        if (i.value) {
+
+            let j =
+            formatJam(i.value);
+
+            i.value = j;
+
+            isi.push(j);
+
+        }
+
+    });
+
+    if (!isi.length)
+        return showNotif("⚠️ Tidak ada jam!");
+
+    let data = getJadwal();
+
+    let lama =
+    data[current] || [];
+
+    data[current] =
+    Array.from(
+        new Set([...lama, ...isi])
+    );
+
+    localStorage.setItem(
+        "jadwal",
+        JSON.stringify(data)
+    );
+
+    showCopyPopup(isi);
+
+}
+
+function showCopyPopup(jamList) {
+
+    let popup =
+    document.createElement("div");
+
+    popup.className = "popup";
+
+    popup.innerHTML = `
+
+        <div class="popup-box">
+
+            <h3>
+                Copy ke hari kerja
             </h3>
 
-            <p style="margin:0;">
-                Sekarang jam <b>${jam}</b><br>
-                Pelajaran: <b>${mapel}</b>
+            <p>
+                Tambahkan juga:
             </p>
+
+            <label>
+                <input
+                    type="checkbox"
+                    value="Sabtu"
+                >
+                Sabtu
+            </label>
+
+            <br>
+
+            <label>
+                <input
+                    type="checkbox"
+                    value="Minggu"
+                >
+                Minggu
+            </label>
+
+            <br><br>
+
+            <button onclick="prosesCopy()">
+                Copy
+            </button>
+
+            <button onclick="tutupPopup()">
+                Batal
+            </button>
+
         </div>
+
     `;
 
-    document.body.appendChild(notif);
+    document.body.appendChild(popup);
+
+    window._copyData = jamList;
+
+}
+
+function prosesCopy() {
+
+    let data = getJadwal();
+
+    let target =
+    hariList.filter(h =>
+        h !== current &&
+        h !== "Sabtu" &&
+        h !== "Minggu"
+    );
+
+    document
+    .querySelectorAll(".popup input:checked")
+    .forEach(c => {
+
+        target.push(c.value);
+
+    });
+
+    target.forEach(h => {
+
+        let lama =
+        data[h] || [];
+
+        data[h] =
+        Array.from(
+            new Set([
+                ...lama,
+                ...window._copyData
+            ])
+        );
+
+    });
+
+    localStorage.setItem(
+        "jadwal",
+        JSON.stringify(data)
+    );
+
+    tutupPopup();
+
+    load();
+
+    showNotif("✅ Copy berhasil!");
+
+}
+
+function tutupPopup() {
+
+    document
+    .querySelector(".popup")
+    .remove();
+
+}
+
+function batalHari() {
+
+    delete temp[current];
+
+    current = null;
+
+    document
+    .getElementById("jam")
+    .innerHTML = "";
+
+    document
+    .querySelectorAll(".hari-btn")
+    .forEach(b =>
+        b.classList.remove("active")
+    );
+
+    showNotif("❌ Dibatalkan");
+
+}
+
+function simpan() {
+
+    if (!current)
+        return showNotif("⚠️ Pilih hari!");
+
+    let inputs =
+    document.querySelectorAll(".list input");
+
+    let isi = [];
+
+    inputs.forEach(i => {
+
+        if (i.value) {
+
+            let j =
+            formatJam(i.value);
+
+            i.value = j;
+
+            isi.push(j);
+
+        }
+
+    });
+
+    if (!isi.length)
+        return showNotif("⚠️ Isi jam dulu!");
+
+    let data = getJadwal();
+
+    let lama =
+    data[current] || [];
+
+    data[current] =
+    Array.from(
+        new Set([...lama, ...isi])
+    );
+
+    localStorage.setItem(
+        "jadwal",
+        JSON.stringify(data)
+    );
+
+    load();
+
+    showNotif("✅ Tersimpan!");
+
+}
+
+function sortJam(a, b) {
+
+    let [x1, y1] =
+    a.split(":").map(Number);
+
+    let [x2, y2] =
+    b.split(":").map(Number);
+
+    return (
+        (x1 * 60 + y1)
+        -
+        (x2 * 60 + y2)
+    );
+
+}
+
+function load() {
+
+    let data = getJadwal();
+
+    let tabel =
+    document.getElementById("tabel");
+
+    if (!Object.keys(data).length) {
+
+        tabel.innerHTML =
+        "<tr><td>Belum ada jadwal</td></tr>";
+
+        return;
+
+    }
+
+    let hari =
+    Object.keys(data);
+
+    let semua =
+    new Set();
+
+    hari.forEach(h =>
+        data[h].forEach(j =>
+            semua.add(j)
+        )
+    );
+
+    let jamList =
+    Array.from(semua)
+    .sort(sortJam);
+
+    let html =
+    "<tr><th>Jam</th>";
+
+    hari.forEach(h =>
+        html += `<th>${h}</th>`
+    );
+
+    html += "</tr>";
+
+    jamList.forEach(j => {
+
+        html += `<tr><td>${j}</td>`;
+
+        hari.forEach(h => {
+
+            let ada =
+            data[h].includes(j);
+
+            let key =
+            `${h}-${j}`;
+
+            let val =
+            getMapel(key);
+
+            html += `
+
+            <td>
+
+                ${
+                    ada
+                    ?
+                    `<input
+                        class="mapel"
+                        value="${val}"
+                        onchange="
+                        updateMapel(
+                            '${key}',
+                            this.value
+                        )"
+                    >`
+                    :
+                    `<span>-</span>`
+                }
+
+            </td>
+
+            `;
+
+        });
+
+        html += "</tr>";
+
+    });
+
+    tabel.innerHTML = html;
+
+}
+
+function getMapel(key) {
+
+    let d = JSON.parse(
+        localStorage.getItem("mapel")
+    ) || {};
+
+    return d[key] || "";
+
+}
+
+function updateMapel(key, val) {
+
+    let d = JSON.parse(
+        localStorage.getItem("mapel")
+    ) || {};
+
+    d[key] = val;
+
+    localStorage.setItem(
+        "mapel",
+        JSON.stringify(d)
+    );
+
+}
+
+function reset() {
+
+    localStorage.clear();
+
+    location.reload();
+
+}
+
+function showNotif(t) {
+
+    let n =
+    document.createElement("div");
+
+    n.className = "notif";
+
+    n.innerText = t;
+
+    document.body.appendChild(n);
+
+    setTimeout(
+        () => n.classList.add("show"),
+        100
+    );
 
     setTimeout(() => {
-        notif.remove();
-    }, 5000);
+
+        n.classList.remove("show");
+
+        setTimeout(
+            () => n.remove(),
+            300
+        );
+
+    }, 2000);
 
 }
-
-// animasi notif
-const style = document.createElement("style");
-
-style.innerHTML = `
-@keyframes slideNotif {
-    from{
-        transform:translateX(100%);
-        opacity:0;
-    }
-    to{
-        transform:translateX(0);
-        opacity:1;
-    }
-}
-`;
-
-document.head.appendChild(style);
