@@ -11,7 +11,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: sans-serif
+            font-family: sans-serif;
         }
 
         body {
@@ -22,9 +22,30 @@
             padding: 20px;
         }
 
+        /* navbar */
+        .navbar {
+            width: 100%;
+            background: #2a2a40;
+            padding: 15px 25px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .3);
+        }
+
+        .navbar h2 {
+            font-size: 20px;
+            color: white;
+        }
+
         .container {
             width: 100%;
-            max-width: 900px
+            max-width: 900px;
+            margin-top: 90px;
+            margin-bottom: 80px;
         }
 
         /* hari */
@@ -45,11 +66,11 @@
         }
 
         .hari-btn.active {
-            background: #4cafef
+            background: #4cafef;
         }
 
         .hari-btn:hover {
-            transform: scale(1.05)
+            transform: scale(1.05);
         }
 
         /* jam */
@@ -82,12 +103,12 @@
 
         button:hover {
             transform: scale(1.05);
-            opacity: .9
+            opacity: .9;
         }
 
         /* table */
         .table-wrap {
-            overflow-x: auto
+            overflow-x: auto;
         }
 
         table {
@@ -122,6 +143,7 @@
             border-radius: 6px;
             opacity: 0;
             transition: .3s;
+            z-index: 9999;
         }
 
         .notif.show {
@@ -151,21 +173,41 @@
             max-width: 300px;
         }
 
-        /* responsive */
+        /* footer */
+        .footer {
+            width: 100%;
+            background: #2a2a40;
+            text-align: center;
+            padding: 15px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, .3);
+        }
+
+        .footer p {
+            color: white;
+            font-size: 14px;
+        }
+
         @media(max-width:600px) {
             .hari-btn {
                 flex: 1 1 45%;
-                text-align: center
+                text-align: center;
             }
 
             button {
-                width: 100%
+                width: 100%;
             }
 
             th,
             td {
                 font-size: 12px;
-                padding: 8px
+                padding: 8px;
+            }
+
+            .navbar h2 {
+                font-size: 18px;
             }
         }
     </style>
@@ -173,255 +215,712 @@
 
 <body>
 
+    <!-- Navbar -->
+    <nav class="navbar">
+        <h2>Jadwal Pelajaran</h2>
+    </nav>
+
     <div class="container">
+
         <div id="hari"></div>
+
         <div id="jam"></div>
 
-        <button onclick="simpan()"> Simpan</button>
-        <button onclick="reset()">🗑 Reset</button>
+        <button onclick="simpan()">Simpan</button>
+        <button onclick="reset()">Reset</button>
 
         <div class="table-wrap">
             <table id="tabel"></table>
         </div>
+
     </div>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <p>copyright © 2026 Jadwal Pelajaran</p>
+    </footer>
+
     <script>
-        const hariList = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
-        let temp = {}, current = null;
+
+        const hariList = [
+            "Senin",
+            "Selasa",
+            "Rabu",
+            "Kamis",
+            "Jumat",
+            "Sabtu",
+            "Minggu"
+        ];
+
+        let temp = {},
+            current = null;
+
+        // =========================
+        // INIT
+        // =========================
 
         init();
+
         function init() {
-            let hariDiv = document.getElementById("hari");
+
+            let hariDiv =
+                document.getElementById("hari");
+
             hariList.forEach(h => {
-                let btn = document.createElement("div");
+
+                let btn =
+                    document.createElement("div");
+
                 btn.innerText = h;
+
                 btn.className = "hari-btn";
-                btn.onclick = () => pilihHari(btn, h);
+
+                btn.onclick =
+                    () => pilihHari(btn, h);
+
                 hariDiv.appendChild(btn);
+
             });
+
             load();
+
+            // mulai cek jadwal otomatis
+            setInterval(cekJadwalSekarang, 1000);
+
         }
+
+        // =========================
+        // GET JADWAL
+        // =========================
 
         function getJadwal() {
-            return JSON.parse(localStorage.getItem("jadwal")) || {};
+
+            return JSON.parse(
+                localStorage.getItem("jadwal")
+            ) || {};
+
         }
 
+        // =========================
+        // PILIH HARI
+        // =========================
+
         function pilihHari(btn, hari) {
+
             if (current) {
-                let inputs = document.querySelectorAll(".list input");
+
+                let inputs =
+                    document.querySelectorAll(".list input");
+
                 temp[current] = [];
-                inputs.forEach(i => { if (i.value) temp[current].push(formatJam(i.value)) });
+
+                inputs.forEach(i => {
+
+                    if (i.value)
+                        temp[current]
+                            .push(formatJam(i.value));
+
+                });
+
             }
 
-            document.querySelectorAll(".hari-btn").forEach(b => b.classList.remove("active"));
+            document
+                .querySelectorAll(".hari-btn")
+                .forEach(b =>
+                    b.classList.remove("active")
+                );
+
             btn.classList.add("active");
+
             current = hari;
 
-            let jamDiv = document.getElementById("jam");
+            let jamDiv =
+                document.getElementById("jam");
+
             jamDiv.innerHTML = "";
 
-            let box = document.createElement("div");
+            let box =
+                document.createElement("div");
+
             box.className = "jam-box";
+
             box.innerHTML = `
-        <h4>${hari}</h4>
-        <div class="list"></div>
-        <button onclick="tambah()">+ Jam</button>
-        <button onclick="copyHari()">Copy di setiap hari?</button>
-        <button onclick="batalHari()" style="background:#888;">Batal</button>
-    `;
+                <h4>${hari}</h4>
+
+                <div class="list"></div>
+
+                <button onclick="tambah()">
+                    + Jam
+                </button>
+
+                <button onclick="copyHari()">
+                    Copy di setiap hari?
+                </button>
+
+                <button
+                    onclick="batalHari()"
+                    style="background:#888;"
+                >
+                    Batal
+                </button>
+            `;
+
             jamDiv.appendChild(box);
 
             let list = box.querySelector(".list");
+
             let data = getJadwal();
 
-            let gabung = new Set([...(data[hari] || []), ...(temp[hari] || [])]);
+            let gabung = new Set([
+                ...(data[hari] || []),
+                ...(temp[hari] || [])
+            ]);
+
             Array.from(gabung).forEach(j => {
-                let input = document.createElement("input");
+
+                let input =
+                    document.createElement("input");
+
                 input.value = j;
+
                 list.appendChild(input);
+
             });
+
         }
+
+        // =========================
+        // TAMBAH JAM
+        // =========================
 
         function tambah() {
-            let input = document.createElement("input");
-            input.placeholder = "Contoh: 8 / 800 / 845";
-            document.querySelector(".list").appendChild(input);
+
+            let input =
+                document.createElement("input");
+
+            input.placeholder =
+                "Contoh: 8 / 800 / 845";
+
+            document
+                .querySelector(".list")
+                .appendChild(input);
+
         }
+
+        // =========================
+        // FORMAT JAM
+        // =========================
 
         function formatJam(input) {
-            input = input.replace(/[^0-9]/g, "");
-            if (input.length === 1) return "0" + input + ":00";
-            if (input.length === 2) return input + ":00";
-            if (input.length === 3) return "0" + input[0] + ":" + input.slice(1);
-            if (input.length === 4) return input.slice(0, 2) + ":" + input.slice(2);
+
+            input =
+                input.replace(/[^0-9]/g, "");
+
+            if (input.length === 1)
+                return "0" + input + ":00";
+
+            if (input.length === 2)
+                return input + ":00";
+
+            if (input.length === 3)
+                return "0" + input[0] + ":" + input.slice(1);
+
+            if (input.length === 4)
+                return input.slice(0, 2) + ":" + input.slice(2);
+
             return input;
+
         }
 
-        function copyHari() {
-            if (!current) return showNotif("⚠️ Pilih hari dulu!");
+        // =========================
+        // COPY HARI
+        // =========================
 
-            let inputs = document.querySelectorAll(".list input");
+        function copyHari() {
+
+            if (!current)
+                return showNotif("⚠️ Pilih hari dulu!");
+
+            let inputs =
+                document.querySelectorAll(".list input");
+
             let isi = [];
 
             inputs.forEach(i => {
+
                 if (i.value) {
-                    let j = formatJam(i.value);
+
+                    let j =
+                        formatJam(i.value);
+
                     i.value = j;
+
                     isi.push(j);
+
                 }
+
             });
 
-            if (!isi.length) return showNotif("⚠️ Tidak ada jam!");
+            if (!isi.length)
+                return showNotif("⚠️ Tidak ada jam!");
 
             let data = getJadwal();
-            let lama = data[current] || [];
-            data[current] = Array.from(new Set([...lama, ...isi]));
-            localStorage.setItem("jadwal", JSON.stringify(data));
+
+            let lama =
+                data[current] || [];
+
+            data[current] =
+                Array.from(
+                    new Set([...lama, ...isi])
+                );
+
+            localStorage.setItem(
+                "jadwal",
+                JSON.stringify(data)
+            );
 
             showCopyPopup(isi);
+
         }
 
+        // =========================
+        // POPUP COPY
+        // =========================
+
         function showCopyPopup(jamList) {
-            let popup = document.createElement("div");
+
+            let popup =
+                document.createElement("div");
+
             popup.className = "popup";
+
             popup.innerHTML = `
-        <div class="popup-box">
-            <h3>Copy ke hari kerja</h3>
-            <p>Tambahkan juga:</p>
-            <label><input type="checkbox" value="Sabtu"> Sabtu</label><br>
-            <label><input type="checkbox" value="Minggu"> Minggu</label><br><br>
-            <button onclick="prosesCopy()">Copy</button>
-            <button onclick="tutupPopup()">Batal</button>
-        </div>`;
+                <div class="popup-box">
+
+                    <h3>Copy ke hari kerja</h3>
+
+                    <p>Tambahkan juga:</p>
+
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="Sabtu"
+                        >
+                        Sabtu
+                    </label>
+
+                    <br>
+
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="Minggu"
+                        >
+                        Minggu
+                    </label>
+
+                    <br><br>
+
+                    <button onclick="prosesCopy()">
+                        Copy
+                    </button>
+
+                    <button onclick="tutupPopup()">
+                        Batal
+                    </button>
+
+                </div>
+            `;
+
             document.body.appendChild(popup);
+
             window._copyData = jamList;
+
         }
 
         function prosesCopy() {
+
             let data = getJadwal();
 
-            let target = hariList.filter(h => h !== current && h !== "Sabtu" && h !== "Minggu");
+            let target =
+                hariList.filter(h =>
+                    h !== current &&
+                    h !== "Sabtu" &&
+                    h !== "Minggu"
+                );
 
-            document.querySelectorAll(".popup input:checked").forEach(c => {
-                target.push(c.value);
-            });
+            document
+                .querySelectorAll(".popup input:checked")
+                .forEach(c => {
+                    target.push(c.value);
+                });
 
             target.forEach(h => {
-                let lama = data[h] || [];
-                data[h] = Array.from(new Set([...lama, ...window._copyData]));
+
+                let lama =
+                    data[h] || [];
+
+                data[h] =
+                    Array.from(
+                        new Set([
+                            ...lama,
+                            ...window._copyData
+                        ])
+                    );
+
             });
 
-            localStorage.setItem("jadwal", JSON.stringify(data));
+            localStorage.setItem(
+                "jadwal",
+                JSON.stringify(data)
+            );
+
             tutupPopup();
+
             load();
+
             showNotif("✅ Copy berhasil!");
+
         }
 
         function tutupPopup() {
-            document.querySelector(".popup").remove();
+
+            document
+                .querySelector(".popup")
+                .remove();
+
         }
+
+        // =========================
+        // BATAL
+        // =========================
 
         function batalHari() {
+
             delete temp[current];
+
             current = null;
-            document.getElementById("jam").innerHTML = "";
-            document.querySelectorAll(".hari-btn").forEach(b => b.classList.remove("active"));
+
+            document
+                .getElementById("jam")
+                .innerHTML = "";
+
+            document
+                .querySelectorAll(".hari-btn")
+                .forEach(b =>
+                    b.classList.remove("active")
+                );
+
             showNotif("❌ Dibatalkan");
+
         }
+
+        // =========================
+        // SIMPAN
+        // =========================
 
         function simpan() {
-            if (!current) return showNotif("⚠️ Pilih hari!");
 
-            let inputs = document.querySelectorAll(".list input");
+            if (!current)
+                return showNotif("⚠️ Pilih hari!");
+
+            let inputs =
+                document.querySelectorAll(".list input");
+
             let isi = [];
+
             inputs.forEach(i => {
+
                 if (i.value) {
-                    let j = formatJam(i.value);
+
+                    let j =
+                        formatJam(i.value);
+
                     i.value = j;
+
                     isi.push(j);
+
                 }
+
             });
 
-            if (!isi.length) return showNotif("⚠️ Isi jam dulu!");
+            if (!isi.length)
+                return showNotif("⚠️ Isi jam dulu!");
 
             let data = getJadwal();
-            let lama = data[current] || [];
-            data[current] = Array.from(new Set([...lama, ...isi]));
 
-            localStorage.setItem("jadwal", JSON.stringify(data));
+            let lama =
+                data[current] || [];
+
+            data[current] =
+                Array.from(
+                    new Set([...lama, ...isi])
+                );
+
+            localStorage.setItem(
+                "jadwal",
+                JSON.stringify(data)
+            );
+
             load();
+
             showNotif("✅ Tersimpan!");
+
         }
+
+        // =========================
+        // SORT JAM
+        // =========================
 
         function sortJam(a, b) {
-            let [x1, y1] = a.split(":").map(Number);
-            let [x2, y2] = b.split(":").map(Number);
-            return (x1 * 60 + y1) - (x2 * 60 + y2);
+
+            let [x1, y1] =
+                a.split(":").map(Number);
+
+            let [x2, y2] =
+                b.split(":").map(Number);
+
+            return (
+                (x1 * 60 + y1)
+                -
+                (x2 * 60 + y2)
+            );
+
         }
 
+        // =========================
+        // LOAD TABLE
+        // =========================
+
         function load() {
+
             let data = getJadwal();
-            let tabel = document.getElementById("tabel");
+
+            let tabel =
+                document.getElementById("tabel");
 
             if (!Object.keys(data).length) {
-                tabel.innerHTML = "<tr><td>Belum ada jadwal</td></tr>";
+
+                tabel.innerHTML =
+                    "<tr><td>Belum ada jadwal</td></tr>";
+
                 return;
             }
 
-            let hari = Object.keys(data);
-            let semua = new Set();
-            hari.forEach(h => data[h].forEach(j => semua.add(j)));
+            let hari =
+                Object.keys(data);
 
-            let jamList = Array.from(semua).sort(sortJam);
+            let semua =
+                new Set();
 
-            let html = "<tr><th>Jam</th>";
-            hari.forEach(h => html += `<th>${h}</th>`);
+            hari.forEach(h =>
+                data[h].forEach(j =>
+                    semua.add(j)
+                )
+            );
+
+            let jamList =
+                Array.from(semua)
+                    .sort(sortJam);
+
+            let html =
+                "<tr><th>Jam</th>";
+
+            hari.forEach(h =>
+                html += `<th>${h}</th>`
+            );
+
             html += "</tr>";
 
             jamList.forEach(j => {
-                html += `<tr><td>${j}</td>`;
-                hari.forEach(h => {
-                    let ada = data[h].includes(j);
-                    let key = `${h}-${j}`;
-                    let val = getMapel(key);
 
-                    html += `<td>
-                ${ada ? `<input class="mapel" value="${val}" onchange="updateMapel('${key}',this.value)">` : `<span>-</span>`}
-            </td>`;
+                html += `<tr><td>${j}</td>`;
+
+                hari.forEach(h => {
+
+                    let ada =
+                        data[h].includes(j);
+
+                    let key =
+                        `${h}-${j}`;
+
+                    let val =
+                        getMapel(key);
+
+                    html += `
+                        <td>
+
+                            ${ada
+                            ?
+                            `<input
+                                    class="mapel"
+                                    value="${val}"
+                                    onchange="
+                                    updateMapel(
+                                        '${key}',
+                                        this.value
+                                    )"
+                                >`
+                            :
+                            `<span>-</span>`
+                        }
+
+                        </td>
+                    `;
+
                 });
+
                 html += "</tr>";
+
             });
 
             tabel.innerHTML = html;
+
         }
 
+        // =========================
+        // MAPEL
+        // =========================
+
         function getMapel(key) {
-            let d = JSON.parse(localStorage.getItem("mapel")) || {};
+
+            let d = JSON.parse(
+                localStorage.getItem("mapel")
+            ) || {};
+
             return d[key] || "";
+
         }
 
         function updateMapel(key, val) {
-            let d = JSON.parse(localStorage.getItem("mapel")) || {};
+
+            let d = JSON.parse(
+                localStorage.getItem("mapel")
+            ) || {};
+
             d[key] = val;
-            localStorage.setItem("mapel", JSON.stringify(d));
+
+            localStorage.setItem(
+                "mapel",
+                JSON.stringify(d)
+            );
+
         }
+
+        // =========================
+        // RESET
+        // =========================
 
         function reset() {
+
             localStorage.clear();
+
             location.reload();
+
         }
 
+        // =========================
+        // NOTIFIKASI VISUAL
+        // =========================
+
         function showNotif(t) {
-            let n = document.createElement("div");
+
+            let n =
+                document.createElement("div");
+
             n.className = "notif";
+
             n.innerText = t;
+
             document.body.appendChild(n);
-            setTimeout(() => n.classList.add("show"), 100);
+
+            setTimeout(
+                () => n.classList.add("show"),
+                100
+            );
+
             setTimeout(() => {
+
                 n.classList.remove("show");
-                setTimeout(() => n.remove(), 300);
-            }, 2000);
+
+                setTimeout(
+                    () => n.remove(),
+                    300
+                );
+
+            }, 3000);
+
         }
+
+        // =========================
+        // SUARA NOTIFIKASI
+        // =========================
+
+        function bunyiNotif() {
+
+            let audio =
+                new Audio(
+                    "https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg"
+                );
+
+            audio.play();
+
+        }
+
+        // =========================
+        // CEK JADWAL SEKARANG
+        // =========================
+
+        let sudahNotif = "";
+
+        function cekJadwalSekarang() {
+
+            let sekarang = new Date();
+
+            let jam =
+                String(sekarang.getHours())
+                    .padStart(2, "0");
+
+            let menit =
+                String(sekarang.getMinutes())
+                    .padStart(2, "0");
+
+            let waktu =
+                `${jam}:${menit}`;
+
+            let namaHari =
+                hariList[
+                sekarang.getDay() === 0
+                    ? 6
+                    : sekarang.getDay() - 1
+                ];
+
+            let data = getJadwal();
+
+            if (!data[namaHari]) return;
+
+            if (
+                data[namaHari].includes(waktu)
+                &&
+                sudahNotif !== `${namaHari}-${waktu}`
+            ) {
+
+                sudahNotif =
+                    `${namaHari}-${waktu}`;
+
+                bunyiNotif();
+
+                let mapel =
+                    getMapel(`${namaHari}-${waktu}`);
+
+                showNotif(
+                    `⏰ ${waktu} - ${mapel || "Jadwal dimulai!"}`
+                );
+
+            }
+
+        }
+
     </script>
 
 </body>
